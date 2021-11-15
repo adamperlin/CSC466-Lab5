@@ -1,7 +1,4 @@
-<<<<<<< Updated upstream
-=======
 from os import write
->>>>>>> Stashed changes
 import pandas as pd
 import numpy as np
 import time
@@ -12,10 +9,6 @@ from collections import defaultdict
 import os.path
 import math
 import argparse
-<<<<<<< Updated upstream
-=======
-import multiprocessing as mp
->>>>>>> Stashed changes
 
 STOPWORDS_PATH = './stopwords'
 # replace all non-whitespace, digits, and other non-alphabetic characters
@@ -67,14 +60,15 @@ def tokenize(text):
 # and the total number of documents,
 # creates a vector which is the size of the vocabulary, and calculates the tf-idf weights
 # for this particular set of frequencies.
-def vectorize_document_tfidf(freqs, doc_freqs, max_freqs, positions, n):
+def vectorize_document_tfidf(freqs, doc_freqs, positions, n):
     vec = np.zeros(len(positions))
+    logs = np.zeros(len(positions))
+    print("n is: {}".format(n))
     for keyword in freqs:
-        tf_idf = (freqs[keyword] / max_freqs[keyword]) * math.log2(n/doc_freqs[keyword])
-        vec[positions[keyword]] = tf_idf
-    
-    return vec
+        vec[positions[keyword]] = freqs[keyword]
+        logs[positions[keyword]] = math.log2(n/doc_freqs[keyword])
 
+    return np.divide(vec, np.max(vec))*logs
 
 K1 = 1
 B = 0.75
@@ -93,8 +87,6 @@ def vectorize_document_okapi(freqs, doc_freqs, max_freqs, positions, file_size, 
     
     return vec
 
-<<<<<<< Updated upstream
-=======
 # vectorizes a document using only raw frequency counts. This is useful for computing the okapi similarity
 # between two vectors
 def vectorize_document_raw_freq(freqs, positions):
@@ -103,7 +95,6 @@ def vectorize_document_raw_freq(freqs, positions):
         vec[positions[keyword]] = freqs[keyword]
 
     return vec
->>>>>>> Stashed changes
 # given doc_freqs, a dictionary of terms to the number of documents in which the terms occur,
 # and name_to_freqs, a dict of dicts mapping of training file names to their respective word frequencies
 # computes - for every keyword in doc_freqs - the maximum frequency of the word across all documents 
@@ -123,9 +114,6 @@ def extract_words(data_file: str):
     with open(data_file, 'r') as f:
         return tokenize(f.read())
 
-<<<<<<< Updated upstream
-def vectorize_dataset(root_directory: str, tfidf_output_file, okapi_output_file):
-=======
 def write_to_csv(output_file: str, vector_rows: list[list[int]], name_to_freqs:  dict[str, dict[str, int]], doc_freqs: dict[str, int]):
     df = pd.DataFrame(vector_rows, index=name_to_freqs.keys(),columns=list(range(len(doc_freqs))))
     df.insert(0, column='file', value=df.index)
@@ -134,13 +122,12 @@ def write_to_csv(output_file: str, vector_rows: list[list[int]], name_to_freqs: 
     with open(output_file, 'w+') as f:
         df.to_csv(f, index=False)
 
-def vectorize_tfidf(tfidf_output_file, name_to_freqs, doc_freqs, max_freqs, positions, total_documents):
+def vectorize_tfidf(tfidf_output_file, name_to_freqs, doc_freqs, positions, total_documents):
     tfidf_rows = []
     for data_file in sorted(name_to_freqs):
         tfidf = vectorize_document_tfidf(
             name_to_freqs[data_file], 
             doc_freqs, 
-            max_freqs, 
             positions, 
             total_documents)
         tfidf_rows.append(tfidf)
@@ -170,7 +157,6 @@ def vectorize_raw(raw_output_file, name_to_freqs, doc_freqs, positions):
     write_to_csv(raw_output_file, raw_rows, name_to_freqs, doc_freqs)
 
 def vectorize_dataset(root_directory: str, tfidf_output_file=None, okapi_output_file=None, raw_output_file=None):
->>>>>>> Stashed changes
     # data file -> author mapping so we can create a ground truth file
     authors = {}
     # maps training file name -> document frequencies
@@ -206,11 +192,6 @@ def vectorize_dataset(root_directory: str, tfidf_output_file=None, okapi_output_
             total_documents += 1
     
     # create ground truth df
-<<<<<<< Updated upstream
-    ground_truth = pd.DataFrame(index=sorted(name_to_freqs.keys()), columns=['file', 'author'])
-    for (k, v) in authors.items():
-        ground_truth.at[k, 'author'] = v
-=======
     ground_truth_rows = []
     for (k, v) in authors.items():
         ground_truth_rows.append([k, v])
@@ -224,56 +205,19 @@ def vectorize_dataset(root_directory: str, tfidf_output_file=None, okapi_output_
            if term in freqs:
                del freqs[term]
     
->>>>>>> Stashed changes
     
     # compute the maximum frequencies for every term
-    max_freqs = max_term_frequencies(doc_freqs, name_to_freqs)
+    #max_freqs = max_term_frequencies(doc_freqs, name_to_freqs)
     
     # we are creating a vector which is the length of our vocabulary set,
     # so we must assign each word a unique 'dimension' in this vector
     positions = dict(zip(sorted(doc_freqs), range(len(doc_freqs))))
-<<<<<<< Updated upstream
-    
-    tfidf_rows = []
-    okapi_rows = []
-    for data_file in name_to_freqs:
-        tfidf = vectorize_document_tfidf(
-            name_to_freqs[data_file], 
-            doc_freqs, 
-            max_freqs, 
-            positions, 
-            total_documents)
-        tfidf_rows.append(tfidf)
-
-        okapi = vectorize_document_okapi(
-            name_to_freqs[data_file], 
-            doc_freqs, 
-            max_freqs, 
-            positions, 
-            file_sizes[data_file], 
-            total_file_size,
-            total_documents)
-        
-        okapi_rows.append(okapi)
-
-    
-    df_tfidf = pd.DataFrame(tfidf_rows, index=name_to_freqs.keys(),columns=list(range(len(doc_freqs))))
-    with open(tfidf_output_file, 'w+') as f:
-        df_tfidf.to_csv(f)
-    
-    df_okapi = pd.DataFrame(okapi_rows, index=name_to_freqs.keys(),columns=list(range(len(doc_freqs))))
-    with open(okapi_output_file, 'w+') as f:
-        df_okapi.to_csv(f)
-
-    with open('ground_truth.csv', 'w+') as f:
-        ground_truth.to_csv(f)
-=======
 
     if tfidf_output_file is not None:
-        vectorize_tfidf(tfidf_output_file, name_to_freqs, doc_freqs, max_freqs, positions, total_documents)
+        vectorize_tfidf(tfidf_output_file, name_to_freqs, doc_freqs, positions, total_documents)
     
     if okapi_output_file is not None:
-        vectorize_okapi(okapi_output_file, name_to_freqs, doc_freqs, max_freqs, positions, file_sizes, total_file_size, total_documents)
+        vectorize_okapi(okapi_output_file, name_to_freqs, doc_freqs, positions, file_sizes, total_file_size, total_documents)
     
     if raw_output_file is not None:
         vectorize_raw(raw_output_file,name_to_freqs, doc_freqs, positions)
@@ -281,29 +225,19 @@ def vectorize_dataset(root_directory: str, tfidf_output_file=None, okapi_output_
     if not os.path.exists('ground_truth.csv'):
         with open('ground_truth.csv', 'w+') as f:
             ground_truth.to_csv(f, index=False)
->>>>>>> Stashed changes
 
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('-d', '--dataset-root', type=str, required=True)
-<<<<<<< Updated upstream
-    parser.add_argument('-tfidf', '--output-file-tfidf', type=str, required=True)
-    parser.add_argument('-okapi', '--output-file-okapi', type=str, required=True)
-=======
     parser.add_argument('-tfidf', '--output-file-tfidf', type=str)
     parser.add_argument('-okapi', '--output-file-okapi', type=str)
     parser.add_argument('-raw', '--output-file-raw', type=str)
->>>>>>> Stashed changes
 
     return parser.parse_args()
 
 def main():
     args = parse_args()
-<<<<<<< Updated upstream
-    vectorize_dataset(args.dataset_root, args.output_file_tfidf, args.output_file_okapi)
-=======
     vectorize_dataset(args.dataset_root, args.output_file_tfidf, args.output_file_okapi, args.output_file_raw)
->>>>>>> Stashed changes
 
 if __name__ == "__main__":
     main()
