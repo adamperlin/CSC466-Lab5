@@ -56,6 +56,16 @@ def generate_similarity_matrix_tfidf(tfidf_path):
 
     return pd.DataFrame(rows, index=df.index, columns=df.index)
 
+def generate_similarity_matrix_tfidf_fast(tfidf_path):
+    tfidf = pd.read_csv(tfidf_path)
+    tfidf.set_index('file', inplace=True)
+
+    dotted = np.dot(tfidf, np.transpose(tfidf))
+    row_norms = np.linalg.norm(tfidf, axis=1)
+    norms = np.array([np.full(len(tfidf.index), np.linalg.norm(tfidf.loc[row])) for row in tfidf.index]) * row_norms 
+    sim_matrix = pd.DataFrame(dotted/norms, index=tfidf.index,columns=tfidf.index)
+    return sim_matrix
+
 
 def main():
     args = parse_args()
@@ -70,7 +80,7 @@ def main():
         sim_matrix.to_csv("similarities_okapi.csv", index=False)
 
     if args.tfidf is not None:
-        sim_matrix = generate_similarity_matrix_tfidf(args.tfidf)
+        sim_matrix = generate_similarity_matrix_tfidf_fast(args.tfidf)#generate_similarity_matrix_tfidf(args.tfidf)
         sim_matrix.insert(0, column="name", value=sim_matrix.index)
         sim_matrix.to_csv("similarities_tfidf.csv", index=False)
 
