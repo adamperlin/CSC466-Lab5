@@ -76,7 +76,7 @@ B = 0.75
 # and the total number of documents,
 # creates a vector which is the size of the vocabulary, and calculates the okapi weights
 # for this particular set of frequencies.
-def vectorize_document_okapi(freqs, doc_freqs, max_freqs, positions, file_size, total_file_size, n):
+def vectorize_document_okapi(freqs, doc_freqs, positions, file_size, total_file_size, n):
     vec = np.zeros(len(positions))
     avg_doc_len = total_file_size / n
 
@@ -132,13 +132,12 @@ def vectorize_tfidf(tfidf_output_file, name_to_freqs, doc_freqs, positions, tota
         tfidf_rows.append(tfidf)
     write_to_csv(tfidf_output_file, tfidf_rows, name_to_freqs, doc_freqs)
 
-def vectorize_okapi(okapi_output_file, name_to_freqs, doc_freqs, max_freqs, positions, file_sizes, total_file_size, total_documents):
+def vectorize_okapi(okapi_output_file, name_to_freqs, doc_freqs, positions, file_sizes, total_file_size, total_documents):
     okapi_rows = []
     for data_file in sorted(name_to_freqs):
         tfidf = vectorize_document_okapi(
             name_to_freqs[data_file], 
             doc_freqs, 
-            max_freqs, 
             positions, 
             file_sizes[data_file],
             total_file_size,

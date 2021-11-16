@@ -4,26 +4,40 @@ import argparse
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-data_file", "--data-file", required=True)
     parser.add_argument("-ground_truth_file", "--ground-truth-file", required=True)
-    parser.add_argument("-okapi", "--okapi", action="store_true")
-    parser.add_argument("-cosine", "--cosine", action="store_true")
+    parser.add_argument("-okapi", "--okapi", type=str)
+    parser.add_argument("-cosine", "--cosine", type=str)
+    parser.add_argument("-raw", "--raw", type=str)
     parser.add_argument("-k", type=int, required=True)
 
     return parser.parse_args()
 
-"""
-sim_matrix:
-     file1 file2 file3
-file1 1    0.3 
-file2        1
-file3              1
-"""
-"""
-file  author
-file1 author
-file2 author
-"""
+
+K2 = 100
+def generate_similarity_matrix_okapi(okapi_path, raw_freq_path):
+    df_okapi = pd.read_csv(okapi_path)
+    df_okapi.set_index('file', inplace=True)
+
+    df_raw_freq = pd.read_csv(raw_freq_path)
+    df_raw_freq.set_index('file', inplace=True)
+
+    raw_arr = np.array(df_raw_freq)
+    okapi_arr = np.array(df_okapi)
+    normalized_raw = (K2+1)*raw_arr / (K2 + raw_arr)
+    rows = np.matmul(okapi_arr, normalized_raw.T)
+
+    return pd.DataFrame(rows, index=df_okapi.index, columns=df_okapi.index)
+
+def generate_similarity_matrix_cosine(tfidf_path):
+    tfidf = pd.read_csv(tfidf_path)
+    tfidf.set_index('file', inplace=True)
+
+    dotted = np.dot(tfidf, np.transpose(tfidf))
+    row_norms = np.linalg.norm(tfidf, axis=1)
+    norms = np.array([np.full(len(tfidf.index), np.linalg.norm(tfidf.loc[row])) for row in tfidf.index]) * row_norms 
+    sim_matrix = pd.DataFrame(dotted/norms, index=tfidf.index,columns=tfidf.index)
+    return sim_matrix
+
 def knearest(sim_matrix, file_name, ground_truth, k):
     neighbor_idxs = np.argsort(sim_matrix.loc[file_name].values)[-(k+1):]
     neighbors = sim_matrix.columns[neighbor_idxs]
@@ -33,13 +47,16 @@ def knearest(sim_matrix, file_name, ground_truth, k):
 
 def main():
     args = parse_args()
-    sim_matrix = pd.read_csv(args.data_file)
-    sim_matrix.index = sim_matrix['name']
-    sim_matrix = sim_matrix.drop(columns=['name'])
 
     ground_truth = pd.read_csv(args.ground_truth_file)
-    ground_truth.index = ground_truth['file']
-    ground_truth = ground_truth.drop(columns=['file'])
+    ground_truth.set_index('file', inplace=True)
+
+    if args.okapi is not None:
+        if args.raw is None:
+            raise ValueError('raw frequency vector file must be supplied')
+        sim_matrix = generate_similarity_matrix_okapi(args.okapi, args.raw)
+    elif args.cosine is not None:
+        sim_matrix = generate_similarity_matrix_cosine(args.cosine)
 
     predictions = pd.DataFrame(index=ground_truth.index, columns=['predicted_author'])
     for file_name in sim_matrix.index:
