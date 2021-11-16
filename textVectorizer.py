@@ -63,7 +63,6 @@ def tokenize(text):
 def vectorize_document_tfidf(freqs, doc_freqs, positions, n):
     vec = np.zeros(len(positions))
     logs = np.zeros(len(positions))
-    print("n is: {}".format(n))
     for keyword in freqs:
         vec[positions[keyword]] = freqs[keyword]
         logs[positions[keyword]] = math.log2(n/doc_freqs[keyword])
@@ -115,7 +114,7 @@ def extract_words(data_file: str):
         return tokenize(f.read())
 
 def write_to_csv(output_file: str, vector_rows: list[list[int]], name_to_freqs:  dict[str, dict[str, int]], doc_freqs: dict[str, int]):
-    df = pd.DataFrame(vector_rows, index=name_to_freqs.keys(),columns=list(range(len(doc_freqs))))
+    df = pd.DataFrame(vector_rows, index=sorted(name_to_freqs.keys()),columns=list(range(len(doc_freqs))))
     df.insert(0, column='file', value=df.index)
     df['file'] = df['file'].astype(pd.StringDtype())
 

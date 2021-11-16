@@ -46,9 +46,11 @@ def main():
         print(f"recall: {recall}")
         print(f"f1: {f1measure}")
     
+    total_entries = confusion_matrix.stack().sum()
     print(f"total correct: {total_hits}")
-    print(f"total incorrect: {total_incorrect}")
-    print(f"total accuracy: {total_hits / (total_hits + total_incorrect)}")
+    print(f"total incorrect: {total_entries - total_hits}")
+    print(f"total: {total_entries}")
+    print(f"total accuracy: {total_hits / total_entries}")
     
     with open('confusion_matrix.csv', 'w+') as f:
         confusion_matrix.insert(0, column='true/predicted', value=confusion_matrix.index)
