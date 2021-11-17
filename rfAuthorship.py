@@ -1,6 +1,8 @@
 import pandas as pd
 import numpy as np
 import argparse
+import random
+from statistics import mode
 from DecisionTree import Node, Edge, Leaf
 
 def write_tree_to_json(T):
@@ -27,8 +29,37 @@ def write_tree_to_json(T):
 
     return data
 
-def construct_author_df(df):
-    pass
+def recurse_tree(tree, row):
+    try:
+        leaf = tree["leaf"]
+        return leaf
+    except KeyError:
+        node = tree["node"]
+        attr = node["var"]
+        class_val = row[attr].values[0]
+        edges = node["edges"]
+        for e in edges:
+            direction = e["edge"]["direction"]
+            if direction == "le":
+                if str(class_val) <= str(e["edge"]["value"]):
+                    return recurse_tree(e["edge"], row)
+            else:
+                if str(class_val) > str(e["edge"]["value"]):
+                    return recurse_tree(e["edge"], row)
+
+
+def get_m_attributes(attributes, m):
+    # randomly select m attributes from dataframe without replacement
+    return random.sample(attributes, m)
+
+def construct_author_df(df, k):
+    # shuffles the dataframe and returns a random subset of 50 unique author vectors
+    author_50 = df.sample(frac=1).drop_duplicates(['author'])
+
+    # choose k - 50 data points from the dataframe with replacement
+    extra_df = df.sample(n=(k-50), replace=True)
+    k_df = pd.concat([author_50, extra_df])
+    return k_df
 
 def fast_entropy(class_column, class_domain):
     total_values = len(class_column)
@@ -96,10 +127,10 @@ def C45(D, A, class_label, threshold=0.01):
         if splitting_attr is None:
             T = Leaf(c[0], c[1] / size)
         else:
-            T = Node()
-            T.var = splitting_attr
             D_v = D.loc[D[splitting_attr] <= split]
             if len(D_v) != len(D) and len(D_v) != 0:
+                T = Node()
+                T.var = splitting_attr
                 T_v = C45(D_v, A, class_label, threshold)
                 e = Edge()
                 e.value = "le " + str(split)
@@ -112,7 +143,35 @@ def C45(D, A, class_label, threshold=0.01):
                 e.value = "gt " + str(split)
                 e.node = T_v
                 T.edges.append(e)
+            else:
+                T = Leaf(c[0], c[1] / size)
     return T
+
+def make_prediction(forest, tfidf, file_name):
+    pred = []
+    file_vector = tfidf[tfidf['file'] == file_name]
+    for T in forest:
+        tree = write_tree_to_json(T)
+        author = recurse_tree(tree, file_vector)['decision']
+        pred.append(author)
+
+    return mode(pred)
+    # predicted_labels = []
+    # for p in range(len(pred[0])):
+    #     vals = [pred[a][p] for a in range(len(pred))]
+    #     predicted_labels.append(mode(vals))
+
+def random_forest(rf_df, m, k, N, threshold):
+    forest = []
+    attributes = rf_df.columns.values.tolist()
+    attributes.remove('author')
+    for i in range(N):
+        k_df = construct_author_df(rf_df, k)
+        m_attributes = get_m_attributes(attributes, m)
+        T = C45(k_df, m_attributes, 'author')
+        forest.append(T)
+
+    return forest
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -128,8 +187,23 @@ def parse_args():
 def main():
     args = parse_args()
     tfidf = pd.read_csv(args.tfidf_file)
-    ground_truth = pd.read_csv(args.ground_truth)
-    pass
+    ground_truth = pd.read_csv(args.ground_truth_file)
+
+    rf_df = tfidf.merge(ground_truth, on='file', how='inner')
+    rf_df.set_index('file', inplace=True)
+
+    ground_truth.set_index('file', inplace=True)
+
+    forest = random_forest(rf_df, args.num_attributes, args.num_data_points, args.num_decision_trees, args.threshold)
+    
+    predictions = pd.DataFrame(index=ground_truth.index, columns=['predicted_author'])
+    for file_name in rf_df.index:
+        predicted_author = make_prediction(forest, tfidf, file_name)
+        predictions.at[file_name, 'predicted_author'] = predicted_author
+    
+    with open('predictions.csv', 'w+') as f:
+        predictions.insert(0, column='file', value=predictions.index)
+        predictions.to_csv(f, index=False)
 
 if __name__ == "__main__":
     main()
