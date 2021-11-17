@@ -5,6 +5,7 @@ import random
 from statistics import mode
 from DecisionTree import Node, Edge, Leaf
 
+
 def write_tree_to_json(T):
     data = {}
     if type(T) == Node:
@@ -65,11 +66,16 @@ def construct_author_df(df, k):
 
 def fast_entropy(class_column, class_domain):
     total_values = len(class_column)
-    probs = np.array([0 if c not in class_column.value_counts()
-                    else class_column.value_counts()[c]/total_values for c in class_domain])
 
+    value_counts = class_column.value_counts()
+    #print(value_counts)
+    probs = np.array([0 if c not in value_counts
+                    else value_counts[c]/total_values for c in class_domain.index])
+    #print(probs)
+    #probs = np.array(class_domain.values) / total_values
     return -np.sum(np.multiply(probs, np.log2(probs, out=np.zeros(len(probs)), where=(probs!=0))))
-    
+
+
 def find_best_split_fast(attr, data, class_col, domain):
     # sort data frame by values in column attr
     sorted_data = data.sort_values(by=attr)
@@ -82,7 +88,9 @@ def find_best_split_fast(attr, data, class_col, domain):
     # compute the last index of every unique value in the array
     #i.e., splt_idxs for the column [1, 1, 2, 2, 2, 3, 4, 5] would 
     # return [1, 4, ]
-    splt_idxs = np.unique([np.argwhere(arr == val)[-1] for val in arr])
+    #splt_idxs = np.unique([np.argwhere(arr == val)[-1] for val in arr])
+    #splt_idxs = np.unique([np.argwhere(arr == val)[-1] for val in arr])
+    splt_idxs = np.concatenate(np.array([np.argwhere(arr == val)[-1] for val in np.unique(arr)]))
 
     df_lt = [sorted_data.iloc[:idx] for idx in splt_idxs]
     df_gt = [sorted_data.iloc[idx:] for idx in splt_idxs]
@@ -100,7 +108,9 @@ def find_best_split_fast(attr, data, class_col, domain):
    
     m_idx = np.argmax(gains) #np.where(gains == max_gain)[0][0]
     max_gain = np.max(gains)
+
     return (sorted_column.iloc[splt_idxs[m_idx]], max_gain)
+
 
 def select_splitting_attribute(attributes, data, class_col, domain, gain_thresh):
     gains = {}
@@ -168,8 +178,9 @@ def random_forest(rf_df, m, k, N, threshold):
     for i in range(N):
         k_df = construct_author_df(rf_df, k)
         m_attributes = get_m_attributes(attributes, m)
-        T = C45(k_df, m_attributes, 'author')
+        T = C45(k_df, m_attributes, 'author') 
         forest.append(T)
+        print(f"[progress] constructed {i}/{N} trees")
 
     return forest
 
