@@ -54,11 +54,13 @@ def get_m_attributes(attributes, m):
 
 def construct_author_df(df, k):
     # shuffles the dataframe and returns a random subset of 50 unique author vectors
-    author_50 = df.sample(frac=1).drop_duplicates(['author'])
+    authors_50 = []
+    for i in range(20):
+        authors_50.append(df.sample(frac=1).drop_duplicates(['author']))
 
     # choose k - 50 data points from the dataframe with replacement
-    extra_df = df.sample(n=(k-50), replace=True)
-    k_df = pd.concat([author_50, extra_df])
+    extra_df = df.sample(n=(k-1000), replace=True)
+    k_df = pd.concat(authors_50 + [extra_df])
     return k_df
 
 def fast_entropy(class_column, class_domain):
@@ -116,19 +118,21 @@ def select_splitting_attribute(attributes, data, class_col, domain, gain_thresh)
 
 def C45(D, A, class_label, threshold=0.01):
     size = len(D)
-    domain = dict(D[class_label].value_counts(sort=True))
-    c = list(domain.items())[0]
+    domain = D[class_label].value_counts(sort=True)
+    # c = list(domain.items())[0]
+    plurality = domain.index[0]
+    plurality_size = domain.iloc[0]
     if len(domain) == 1:
-        T = Leaf(c[0], 1.0)
+        T = Leaf(plurality, 1.0)
     elif A == []:
-        T = Leaf(c[0], c[1] / size)
+        T = Leaf(plurality, plurality_size / size)
     else:
         splitting_attr, split = select_splitting_attribute(A, D, class_label, domain, threshold)
         if splitting_attr is None:
-            T = Leaf(c[0], c[1] / size)
+            T = Leaf(plurality, plurality_size / size)
         else:
             D_v = D.loc[D[splitting_attr] <= split]
-            if len(D_v) != len(D) and len(D_v) != 0:
+            if len(D_v) != size and len(D_v) != 0:
                 T = Node()
                 T.var = splitting_attr
                 T_v = C45(D_v, A, class_label, threshold)
@@ -144,7 +148,7 @@ def C45(D, A, class_label, threshold=0.01):
                 e.node = T_v
                 T.edges.append(e)
             else:
-                T = Leaf(c[0], c[1] / size)
+                T = Leaf(plurality_size, plurality_size / size)
     return T
 
 def make_prediction(forest, tfidf, file_name):
@@ -156,10 +160,6 @@ def make_prediction(forest, tfidf, file_name):
         pred.append(author)
 
     return mode(pred)
-    # predicted_labels = []
-    # for p in range(len(pred[0])):
-    #     vals = [pred[a][p] for a in range(len(pred))]
-    #     predicted_labels.append(mode(vals))
 
 def random_forest(rf_df, m, k, N, threshold):
     forest = []
