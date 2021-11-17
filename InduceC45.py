@@ -6,72 +6,7 @@ from DecisionTree import Node, Edge, Leaf
 
 
 def main():
-    A, class_label, D = arg_parsing()
-    for attr in A:
-        if A[attr] != 0:
-            A[attr] = ("categorical", list(set(D[attr])))
-        else:
-            A[attr] = ("numeric", -1)
-
-    T = C45(D, A, threshold=0.01, class_label=class_label)
-    file_data = {}
-    file_data["dataset"] = sys.argv[1]
-    tree_data = write_tree_to_json(T)
-
-    data = {**file_data, **tree_data}
-    with open("tree.json", "w") as outfile:
-        json.dump(data, outfile)
-
-
-def arg_parsing():
-    rest_result = 1
-    if not (len(sys.argv) > 1):
-        print("Incorrect Number of Args!!")
-
-    train_file = sys.argv[1]
-    if len(sys.argv) == 3:
-        rest_file = sys.argv[2]
-        rest_result = read_restr_file(rest_file)
-
-    return read_test_file(train_file, rest_result)
-
-
-def read_restr_file(file):
-    f = open(file)
-    restrictions = f.readline().strip().split(",")
-    return restrictions
-
-
-def read_test_file(file, rest_result):
-    df = pd.read_csv(file)
-    df = df.drop([0, 1], axis=0)
-    return get_label_and_attributes(file, rest_result, df)
-
-
-def get_label_and_attributes(file, rest_result, df):
-    try:
-        f = open(file)
-        attributes = f.readline().split(",")
-        domains = f.readline().split(",")
-        attributes = [x.strip().strip('"') for x in attributes]
-        class_label = f.readline().strip().strip('"')
-
-        A = {}
-        for i in range(len(domains)):
-            if domains[i] == -1:
-                attributes.remove(attributes[i])
-            else:
-                A[attributes[i]] = int(domains[i])
-
-        del A[class_label]
-
-        f.close()
-        return A, class_label, df
-
-    except Exception as ex:
-        print("File not found ", ex)
-        sys.exit(0)
-
+    pass
 
 def write_tree_to_json(T):
     data = {}
