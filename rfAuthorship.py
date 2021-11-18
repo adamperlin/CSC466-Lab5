@@ -6,6 +6,8 @@ from statistics import mode
 from DecisionTree import Node, Edge, Leaf
 import time
 
+from DecisionTree2 import DecisionTreeClassifier
+
 
 def write_tree_to_json(T):
     data = {}
@@ -49,6 +51,17 @@ def recurse_tree(tree, row):
                 if str(class_val) > str(e["edge"]["value"]):
                     return recurse_tree(e["edge"], row)
 
+def classify_datapoint(row, tree):
+    if 'leaf' in tree:
+        return tree['leaf']['decision']        
+    
+    current_var = tree['node']['var']
+    v = row[current_var]
+    edge_le, edge_gt = tree['node']['edges'][0]['edge'], tree['node']['edges'][1]['edge']
+    if v <= edge_le['value']:
+        return classify_datapoint(row, edge_le)
+    else:
+        return classify_datapoint(row, edge_gt)
 
 def get_m_attributes(attributes, m):
     # randomly select m attributes from dataframe without replacement
@@ -159,12 +172,14 @@ def C45(D, A, class_label, threshold=0.01):
                 T = Leaf(plurality_size, plurality_size / size)
     return T
 
-def make_prediction(forest, tfidf, file_name):
+
+def make_prediction(forest: list[DecisionTreeClassifier], tfidf, file_name):
     pred = []
-    file_vector = tfidf[tfidf['file'] == file_name]
+    file_vector = tfidf.loc[file_name]
     for T in forest:
-        tree = write_tree_to_json(T)
-        author = recurse_tree(tree, file_vector)['decision']
+        #tree = write_tree_to_json(T)
+        #author = recurse_tree(tree, file_vector)['decision']
+        author = T.classify_datapoint(file_vector)
         pred.append(author)
 
     return mode(pred)
@@ -176,7 +191,9 @@ def random_forest(rf_df, m, k, N, threshold):
     for i in range(N):
         k_df = construct_author_df(rf_df, k)
         m_attributes = get_m_attributes(attributes, m)
-        T = C45(k_df, m_attributes, 'author') 
+        #T = C45(k_df, m_attributes, 'author') 
+        T = DecisionTreeClassifier(k_df, 'author', m_attributes)
+        print(T.tree)
         forest.append(T)
         print(f"[progress] constructed {i}/{N} trees")
 
@@ -190,6 +207,7 @@ def parse_args():
     parser.add_argument('-m', '--num-attributes', type=int, required=True)
     parser.add_argument('-k', '--num-data-points', type=int, required=True)
     parser.add_argument('-thresh', '--threshold', type=int)
+    parser.add_argument('-output_file', '--output-file', type=str,default='predictions.csv')
 
     return parser.parse_args()
 
@@ -200,17 +218,20 @@ def main():
 
     rf_df = tfidf.merge(ground_truth, on='file', how='inner')
     rf_df.set_index('file', inplace=True)
-
+    tfidf.set_index('file', inplace=True)
     ground_truth.set_index('file', inplace=True)
 
     forest = random_forest(rf_df, args.num_attributes, args.num_data_points, args.num_decision_trees, args.threshold)
-    
+    print(list(map(write_tree_to_json, forest)))
     predictions = pd.DataFrame(index=ground_truth.index, columns=['predicted_author'])
+    i = 0
     for file_name in rf_df.index:
         predicted_author = make_prediction(forest, tfidf, file_name)
+        i += 1
+        #print(f"predicted {i}/{len(rf_df.index)}")
         predictions.at[file_name, 'predicted_author'] = predicted_author
     
-    with open('predictions.csv', 'w+') as f:
+    with open(args.output_file, 'w+') as f:
         predictions.insert(0, column='file', value=predictions.index)
         predictions.to_csv(f, index=False)
 
