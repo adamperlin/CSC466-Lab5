@@ -4,6 +4,7 @@ import argparse
 import random
 from statistics import mode
 from DecisionTree import Node, Edge, Leaf
+import time
 
 
 def write_tree_to_json(T):
@@ -56,9 +57,10 @@ def get_m_attributes(attributes, m):
 def construct_author_df(df, k):
     # shuffles the dataframe and returns a random subset of 50 unique author vectors
     authors_50 = []
-    for i in range(20):
-        authors_50.append(df.sample(frac=1).drop_duplicates(['author']))
-
+    for author in df['author'].unique():
+        d_author = df[df['author'] == author].sample(n=20, replace=True)
+        authors_50.append(d_author)
+    
     # choose k - 50 data points from the dataframe with replacement
     extra_df = df.sample(n=(k-1000), replace=True)
     k_df = pd.concat(authors_50 + [extra_df])
@@ -68,21 +70,16 @@ def fast_entropy(class_column, class_domain):
     total_values = len(class_column)
 
     value_counts = class_column.value_counts()
-    #print(value_counts)
     probs = np.array([0 if c not in value_counts
                     else value_counts[c]/total_values for c in class_domain.index])
-    #print(probs)
-    #probs = np.array(class_domain.values) / total_values
     return -np.sum(np.multiply(probs, np.log2(probs, out=np.zeros(len(probs)), where=(probs!=0))))
 
-
 def find_best_split_fast(attr, data, class_col, domain):
-    # sort data frame by values in column attr
-    sorted_data = data.sort_values(by=attr)
+    sorted_data = data.filter(items=[attr, class_col]).sort_values(by=attr)
+
     total_len = len(data)
     sorted_column = sorted_data[attr]
     
-    # create numpy array from sorted column
     arr = np.array(sorted_column)
     
     # compute the last index of every unique value in the array
@@ -138,6 +135,7 @@ def C45(D, A, class_label, threshold=0.01):
         T = Leaf(plurality, plurality_size / size)
     else:
         splitting_attr, split = select_splitting_attribute(A, D, class_label, domain, threshold)
+
         if splitting_attr is None:
             T = Leaf(plurality, plurality_size / size)
         else:
