@@ -1,0 +1,40 @@
+README : Lab 5
+
+Contributors
+------------
+Ruhi Prasad (ruprasad@calpoly.edu)
+Adam Perlin (aperlin@calpoly.edu)
+
+Instructions for Running
+------------------------
+   Note: This program was built using python v3.9. Using the -h flag with each of the files will give detailed information about the command-line arguments the program takes.
+
+   textVectorizer:
+
+      $ python3 textVectorizer.py -d <DATASET_ROOT> [-tfidf <OUTPUT_FILE_TFIDF>] [-okapi <OUTPUT_FILE_OKAPI>] [-raw <OUTPUT_FILE_RAW>]
+
+ 
+   knnAuthorship:
+
+      $ python3 knnAuthorship.py -ground_truth_file <GROUND_TRUTH_FILE> [-okapi <OKAPI>] [-cosine <COSINE>] [-raw <RAW>] -k K
+
+   rfAuthorship:
+
+      $ python3 rfAuthorship.py -tfidf_file <TFIDF_FILE> -ground_truth_file <GROUND_TRUTH_FILE> -N <NUM_DECISION_TREES> -m <NUM_ATTRIBUTES> -k <NUM_DATA_POINTS> [-thresh <THRESHOLD>] [-output_file <OUTPUT_FILE>]
+
+   classifierEvaluation:
+
+      $ python3 classifierEvaluation.py -predictions_file <PREDICTIONS_FILE> -ground_truth_file <GROUND_TRUTH_FILE>
+
+
+Output Files
+------------
+   knn: (python3 knnAuthorship.py -ground_truth_file ground_truth.csv -cosine tfidf.csv -k 1)
+      
+      knn1_cosine.out
+
+   rf: (python3 rfAuthorship.py -tfidf_file tfidf.csv -ground_truth_file ground_truth.csv -N 50 -m 100 -k 2500)
+
+      rfN50_m100_k2500.out
+   
+   
