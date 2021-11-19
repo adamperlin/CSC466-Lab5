@@ -29,7 +29,7 @@ def main():
 
     total_hits = 0
     total_incorrect = 0
-    for author in authors: 
+    for author in sorted(authors): 
         print(f"author: {author}")
         hits = confusion_matrix.at[author, author]
         total_hits += hits

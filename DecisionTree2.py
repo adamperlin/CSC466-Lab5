@@ -88,8 +88,8 @@ class DecisionTreeClassifier:
         #splt_idxs = np.unique([np.argwhere(arr == val)[-1] for val in arr])
         splt_idxs = np.concatenate(np.array([np.argwhere(arr == val)[-1] for val in np.unique(arr)]))
 
-        df_lt = [sorted_data.iloc[:idx] for idx in splt_idxs]
-        df_gt = [sorted_data.iloc[idx:] for idx in splt_idxs]
+        df_lt = [sorted_data.iloc[:(idx+1)] for idx in splt_idxs]
+        df_gt = [sorted_data.iloc[(idx+1):] for idx in splt_idxs]
 
         weights_lt = [0 if total_len == 0 else len(df)/total_len for df in df_lt]
         weights_gt = [0 if total_len == 0 else len(df)/total_len for df in df_gt]
@@ -109,15 +109,15 @@ class DecisionTreeClassifier:
 
     def select_splitting_attribute(self, attributes, data, class_col, domain, gain_thresh):
         gains = {}
-        split_val = None
+        best_for_attr = {}
         for attr in sorted(attributes):
             (x, gain) =  self.find_best_split_fast(attr, data, class_col, domain)
-            split_val = x
+            best_for_attr[attr] = x
             gains[attr] = gain
 
         (max_gain_attr, max_gain) = max(gains.items(), key=lambda pair: pair[1])
         if max_gain >= gain_thresh:
-            return (max_gain_attr, split_val)
+            return (max_gain_attr, best_for_attr[max_gain_attr])
     
         return None, None
 
