@@ -124,15 +124,15 @@ def find_best_split_fast(attr, data, class_col, domain):
 
 def select_splitting_attribute(attributes, data, class_col, domain, gain_thresh):
     gains = {}
-    split_val = None
+    best_for_attr = {}
     for attr in sorted(attributes):
         (x, gain) =  find_best_split_fast(attr, data, class_col, domain)
-        split_val = x
+        best_for_attr[attr] = x
         gains[attr] = gain
 
     (max_gain_attr, max_gain) = max(gains.items(), key=lambda pair: pair[1])
     if max_gain >= gain_thresh:
-        return (max_gain_attr, split_val)
+        return (max_gain_attr, best_for_attr[max_gain_attr])
  
     return None, None
 
@@ -192,7 +192,7 @@ def random_forest(rf_df, m, k, N, threshold):
         k_df = construct_author_df(rf_df, k)
         m_attributes = get_m_attributes(attributes, m)
         #T = C45(k_df, m_attributes, 'author') 
-        T = DecisionTreeClassifier(k_df, 'author', m_attributes)
+        T = DecisionTreeClassifier(k_df, 'author', m_attributes, gain_thresh=threshold)
         print(T.tree)
         forest.append(T)
         print(f"[progress] constructed {i}/{N} trees")
@@ -206,7 +206,7 @@ def parse_args():
     parser.add_argument('-N', '--num-decision-trees', type=int, required=True)
     parser.add_argument('-m', '--num-attributes', type=int, required=True)
     parser.add_argument('-k', '--num-data-points', type=int, required=True)
-    parser.add_argument('-thresh', '--threshold', type=int)
+    parser.add_argument('-thresh', '--threshold', type=float, default=0.01)
     parser.add_argument('-output_file', '--output-file', type=str,default='predictions.csv')
 
     return parser.parse_args()
@@ -222,7 +222,6 @@ def main():
     ground_truth.set_index('file', inplace=True)
 
     forest = random_forest(rf_df, args.num_attributes, args.num_data_points, args.num_decision_trees, args.threshold)
-    print(list(map(write_tree_to_json, forest)))
     predictions = pd.DataFrame(index=ground_truth.index, columns=['predicted_author'])
     i = 0
     for file_name in rf_df.index:
